@@ -1,0 +1,20 @@
+# Subversion notes
+
+# set responsitory URL with....
+export SVNROOT=svn+ssh://david@192.168.1.3/var/svn-repos
+
+# to check out arduino sketchbook do...
+svn checkout $SVNROOT/arduino sketchbook
+
+cd sketchbook
+
+# to update from repository...
+svn update
+
+# to add new sketches...
+svn status
+svn add <files/folders with ?>
+
+# to commit changes...
+svn -m comment commit
+
