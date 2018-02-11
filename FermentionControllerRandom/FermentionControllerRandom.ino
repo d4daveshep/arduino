@@ -310,20 +310,19 @@ void printJSON(double currentTemp, double averageTemp) {
   Serial.print(minTemp);
   Serial.print(",\"max\":");
   Serial.print(maxTemp);
-  Serial.print(",\"action\":");
 
   switch ( currentAction) {
   case REST:
-    Serial.print("\"Rest\"");
+    Serial.print(",\"action\":\"Rest\"");
     break;
   case HEAT:
-    Serial.print("\"Heat\"");
+    Serial.print(",\"action\":\"Heat\"");
     break;
   case COOL:
-    Serial.print("\"Cool\"");
+    Serial.print(",\"action\":\"Cool\"");
     break;
   default:
-    Serial.print("\"ERROR\"");
+    Serial.print(",\"action\":\"ERROR\"");
   }
   
   Serial.print(",\"target\":");

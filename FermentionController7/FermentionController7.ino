@@ -16,7 +16,8 @@
 #include <DallasTemperature.h>
 
 // define we are in simulation mode or sensor mode (simulation mode generates a random temp rather than reading the sensor)
-const boolean SIMULATE = false;
+//const boolean SIMULATE = false;
+const boolean SIMULATE = true;
 
 // initialise the OneWire sensors
 const int ONE_WIRE_BUS = 3;  // Data wire is plugged into pin 3 on the Arduino
@@ -30,11 +31,18 @@ int tempIndex = 0; // index of the current reading
 double tempTotal = 0; // total of all the temp readings
 double tempAverage = 0.0; // average temp reading
 double currentTemp = 0.0; // current temp reading
-long lastTimestamp = 0.0; // timestamp of last reading
+long lastPrintTimestamp = 0.0; // timestamp of last serial print
+long lastDelayTimestamp = 0.0; // timestamp of last delay reading
 float targetTemp = 20.0; // set default target temperature of the fermentation chamber
 const float TEMP_DIFF = 0.3; // the tolerance we allow before taking action
 float minTemp = 1000.0; // min temperature set to a really high value initally
 float maxTemp = -1000.0; // max temperature set to a really low value initally
+
+// define variables for reading temperature from serial
+const byte serialBufSize = 12; // size of serial char buffer
+char receivedChars[serialBufSize]; // array to hold characters received
+boolean newSerialDataReceived = false; // let us know when new serial data received
+
 
 // initialize the LCD library with the numbers of the interface pins
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);  // select the pins used on the LCD panel
@@ -95,33 +103,41 @@ void setup(void) {
   tempAverage = firstReading;
   tempTotal = tempAverage * NUM_READINGS;
 
-  lastTimestamp=millis();
+  lastPrintTimestamp=millis();
+  lastDelayTimestamp = millis();
 
   delay(1000);
 }
 
 void loop(void) {
 
-  lcd_key = read_LCD_buttons();   // read the buttons
+  // read the lcd button state and adjust the temperature accordingly
+  if(!SIMULATE) {
+    lcd_key = read_LCD_buttons();   // read the buttons
 
-  // depending on which button was pushed, we perform an action
-  switch( lcd_key ) {
+    // depending on which button was pushed, we perform an action
+    switch( lcd_key ) {
 
-  case btnRIGHT:    
-    break;
-  case btnLEFT:
-    break;
-  case btnUP:
-    targetTemp += 1.0;  // increase target temp by 1C
-    break;
-  case btnDOWN:
-    targetTemp -= 1.0;  // decrease target temp by 1C
-    break;
-  case btnSELECT:
-    break;
-  case btnNONE:
-    break;
+    case btnRIGHT:    
+      break;
+    case btnLEFT:
+      break;
+    case btnUP:
+      targetTemp += 1.0;  // increase target temp by 1C
+      break;
+    case btnDOWN:
+      targetTemp -= 1.0;  // decrease target temp by 1C
+      break;
+    case btnSELECT:
+      break;
+    case btnNONE:
+      break;
+    }
   }
+
+  // read any data from the serial port
+  readSerialWithStartEndMarkers();
+  updateTargetTemp();
 
   // do the temp readings and average calculation
   tempTotal -= tempReadings[tempIndex]; // subtract the last temp reading
@@ -267,13 +283,18 @@ void loop(void) {
   lcd.print( dtostrf(maxTemp,4,1,buf) );
 
   // print every minute
-  long newTimestamp = millis();
-  if( ( newTimestamp - lastTimestamp ) > 60000 ) {
-    lastTimestamp = newTimestamp;
+  long newPrintTimestamp = millis();
+  if( ( millis() - lastPrintTimestamp ) > 59600 ) {
+    lastPrintTimestamp = millis();
     printJSON(currentTemp, tempAverage);
   }
 
-  delay(1000);
+  // smart delay of 1000 msec
+  do {
+    // nothing
+  } while ((millis() - lastDelayTimestamp) < 1000);
+ lastDelayTimestamp = millis(); 
+    
 
 }
 
@@ -309,7 +330,7 @@ int read_LCD_buttons(){               // read the buttons
  * { "now":21.38, "avg":21.45, "min":19.45, "max":22.89, "action":"COOL", "target":20.00, "timestamp":123456789 }
  */
 void printJSON(double currentTemp, double averageTemp) {
-  Serial.print("{ \"now\":");
+  Serial.print("{\"now\":");
   Serial.print(currentTemp);
   Serial.print(",\"avg\":");
   Serial.print(averageTemp);
@@ -349,4 +370,45 @@ double randomTemp() {
   return random( 15,25 ) + random( 0, 100 ) / 100.0;
 }
 
+void readSerialWithStartEndMarkers() {
+  static boolean recvInProgress = false;
+  static byte ndx = 0;
+  char startMarker = '<';
+  char endMarker = '>';
+  char rc;
 
+  // if (Serial.available() > 0) {
+  while (Serial.available() > 0 && newSerialDataReceived == false) {
+    rc = Serial.read();
+
+    if (recvInProgress == true) {
+      if (rc != endMarker) {
+        receivedChars[ndx] = rc;
+        ndx++;
+        if (ndx >= serialBufSize) {
+          ndx = serialBufSize - 1;
+        }
+      }
+      else {
+        receivedChars[ndx] = '\0'; // terminate the string
+        recvInProgress = false;
+        ndx = 0;
+        newSerialDataReceived = true;
+      }
+    }
+
+    else if (rc == startMarker) {
+      recvInProgress = true;
+    }
+  }
+}
+
+void updateTargetTemp() {
+  if (newSerialDataReceived == true) {
+    float newTarget = atof(receivedChars);
+    if( newTarget != 0.0 ) {
+      targetTemp = newTarget;
+    }
+    newSerialDataReceived = false;
+  }
+}
