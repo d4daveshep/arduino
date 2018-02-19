@@ -33,8 +33,15 @@ double tempAverage = 0.0; // average temp reading
 double currentTemp = 0.0; // current temp reading
 long lastPrintTimestamp = 0.0; // timestamp of last serial print
 long lastDelayTimestamp = 0.0; // timestamp of last delay reading
-float targetTemp = 20.0; // set default target temperature of the fermentation chamber
-const float TEMP_DIFF = 0.3; // the tolerance we allow before taking action
+
+// define and initialise the temp control tolerances
+float targetTemp = 20.0; // set default target temperature of the fermentation chamber - this could be overwritten by serial data
+float coolStartTempDiff = 0.3; // temp above target we will start cooling
+float coolStopTempDiff = 0.0; // temp above target we will stop cooling (-ve means we overrun target temp)
+float heatStartTempDiff = 0.3; // temp below target we will start heating
+float heatStopTempDiff = 0.1; // temp below target we will stop heating (-ve means we overrun target temp)
+//const float TEMP_DIFF = 0.3; // the tolerance we allow before taking action
+
 float minTemp = 1000.0; // min temperature set to a really high value initally
 float maxTemp = -1000.0; // max temperature set to a really low value initally
 
@@ -182,11 +189,11 @@ void loop(void) {
   switch ( currentAction ) {
   case REST:
     // are we within tolerance
-    if ( tempAverage < (targetTemp-TEMP_DIFF) ) {
+    if ( tempAverage < (targetTemp-heatStartTempDiff) ) {
       // we are too cold so start heating
       currentAction = HEAT;
     } 
-    else if ( tempAverage > (targetTemp+TEMP_DIFF) ) {
+    else if ( tempAverage > (targetTemp+coolStartTempDiff) ) {
       // we are too hot so start cooling
       currentAction = COOL;
     } 
@@ -198,7 +205,7 @@ void loop(void) {
 
   case HEAT:
     // have we reached or exceeded our target yet, but we don't want to overshoot
-    if ( tempAverage >= ( targetTemp - TEMP_DIFF/2 )) {
+    if ( tempAverage >= ( targetTemp - heatStopTempDiff )) {
       // yes so rest
       currentAction = REST;
     }
@@ -206,7 +213,7 @@ void loop(void) {
 
   case COOL:
     // have we reached or exceeded our target yet, but we don't wnat to overshoot
-    if ( tempAverage <= ( targetTemp + TEMP_DIFF/2 ) ) {
+    if ( tempAverage <= ( targetTemp + coolStopTempDiff ) ) {
       // yes so rest
       currentAction = REST;
     }
