@@ -1,0 +1,10 @@
+
+
+disable the crontab to restart serial_read
+
+kill the serial_read script
+
+./arduino --board arduino:avr:uno --port /dev/ttyACM0 --upload ~/development/arduino/FermentionController7/FermentionController7.ino
+
+enable the crontab to restart serial_read
+

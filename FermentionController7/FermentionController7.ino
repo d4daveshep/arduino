@@ -39,7 +39,7 @@ float targetTemp = 20.0; // set default target temperature of the fermentation c
 float coolStartTempDiff = 0.3; // temp above target we will start cooling
 float coolStopTempDiff = 0.0; // temp above target we will stop cooling (-ve means we overrun target temp)
 float heatStartTempDiff = 0.3; // temp below target we will start heating
-float heatStopTempDiff = 0.1; // temp below target we will stop heating (-ve means we overrun target temp)
+float heatStopTempDiff = 0.0; // temp below target we will stop heating (-ve means we overrun target temp)
 //const float TEMP_DIFF = 0.3; // the tolerance we allow before taking action
 
 float minTemp = 1000.0; // min temperature set to a really high value initally
